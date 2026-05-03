@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>StudyQuest — Learn. Level Up. Conquer.</title>
+<!-- Favicon & iOS web app icon -->
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="favicon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="StudyQuest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,400;1,600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 
@@ -609,6 +614,88 @@ main { flex: 1; }
 }
 .btn-restart:hover { border-color: var(--parch2); color: var(--text); }
 
+/* ── TAGS ── */
+.quest-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.tag-pill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 3px 9px;
+  border-radius: 12px;
+  background: var(--stone2);
+  border: 1px solid var(--border);
+  color: var(--textdim);
+  text-transform: uppercase;
+}
+
+/* ── SEARCH & FILTER BAR ── */
+.search-filter-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.search-input {
+  flex: 1;
+  min-width: 200px;
+  background: var(--stone);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 10px 14px;
+  font-family: 'Crimson Pro', serif;
+  font-size: 15px;
+  color: var(--text);
+  outline: none;
+  transition: border-color .2s;
+}
+.search-input:focus { border-color: var(--parch2); box-shadow: 0 0 0 3px var(--rune); }
+.search-input::placeholder { color: var(--textdim); }
+.filter-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.filter-pill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 7px 13px;
+  border-radius: 20px;
+  background: var(--stone);
+  border: 1px solid var(--border);
+  color: var(--textdim);
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all .2s;
+}
+.filter-pill:hover { border-color: var(--parch2); color: var(--text); }
+.filter-pill.active { background: var(--stone2); border-color: var(--gold); color: var(--gold); }
+
+/* ── PROFILE MODAL ── */
+.profile-modal { max-width: 420px; }
+.avatar-preview {
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  border: 2px solid var(--parch2);
+  margin: 0 auto 16px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 36px;
+  background: var(--stone2);
+  overflow: hidden;
+  cursor: pointer;
+  position: relative;
+}
+.avatar-preview img { width: 100%; height: 100%; object-fit: cover; }
+.avatar-preview .change-hint {
+  position: absolute; inset: 0;
+  background: #00000066;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-family: 'JetBrains Mono', monospace; color: #fff;
+  opacity: 0; transition: opacity .2s;
+  letter-spacing: 1px;
+}
+.avatar-preview:hover .change-hint { opacity: 1; }
+.avatar-hdr-img {
+  width: 34px; height: 34px; border-radius: 50%; object-fit: cover;
+}
+
 @media (max-width: 600px) {
   #page-home { padding: 24px 16px; }
   .quest-grid { grid-template-columns: 1fr; }
@@ -1212,6 +1299,7 @@ main { flex: 1; }
     <div class="hdr-right" style="position:relative">
       <button class="avatar-btn" id="avatar-btn" onclick="toggleDropdown()">👤</button>
       <div class="dropdown" id="dropdown" style="display:none">
+        <div class="dropdown-item" onclick="openProfileModal();closeDropdown()">👤 Edit Profile</div>
         <div class="dropdown-item" onclick="showPage('achievements');closeDropdown()">🏆 Achievements</div>
         <div class="dropdown-item danger" onclick="doSignout()">🚪 Sign Out</div>
       </div>
@@ -1232,12 +1320,19 @@ main { flex: 1; }
         <h1 class="page-title" id="home-greeting">Welcome back, Scholar</h1>
         <p class="page-sub" id="home-streak-msg"></p>
       </div>
+      <!-- Search & Filter -->
+      <div class="search-filter-bar">
+        <input class="search-input" id="quest-search" placeholder="🔍 Search quests or tags..." oninput="renderHome()">
+        <div class="filter-pills" id="filter-pills"></div>
+      </div>
+
       <div class="section-head" id="sh-active" style="display:none">Active Quests</div>
       <div class="quest-grid" id="grid-active"></div>
-      <div class="section-head">Available Quests</div>
+      <div class="section-head" id="sh-available">Available Quests</div>
       <div class="quest-grid" id="grid-available"></div>
       <div class="section-head" id="sh-done" style="display:none">Completed Quests</div>
       <div class="quest-grid" id="grid-done"></div>
+      <div id="no-results" style="display:none" class="empty-state">No quests match your search.</div>
     </div>
 
     <!-- PATH -->
@@ -1290,9 +1385,12 @@ main { flex: 1; }
           <div class="prog-fill active" id="res-xp-fill" style="width:0%"></div>
         </div>
       </div>
-      <div class="result-actions">
-        <button class="btn-ghost" onclick="exitToPath()">Back to Path</button>
-        <button class="btn-primary" id="retry-btn">Try Again ↺</button>
+      <div class="result-actions" style="flex-direction:column;align-items:center;gap:10px">
+        <button class="btn-primary" id="next-node-btn" onclick="goNextNode()" style="min-width:220px;font-size:15px;padding:14px 36px">Next Node →</button>
+        <div style="display:flex;gap:10px;margin-top:4px">
+          <button class="btn-ghost" onclick="exitToPath()">← Back to Path</button>
+          <button class="btn-ghost" id="retry-btn">↺ Try Again</button>
+        </div>
       </div>
     </div>
 
@@ -1387,7 +1485,7 @@ const QUESTS = [
      UNIT 04 — REFORM MOVEMENTS
   ══════════════════════════════════════════ */
   {
-    id: 'q_reform',
+    id: 'q_reform', tags: ['History', 'Grade 7'],
     emoji: '🕌',
     title: "The Reformers' Sanctum",
     subtitle: 'Unit 04 — Muslim Reform Movements of the Subcontinent',
@@ -1510,7 +1608,7 @@ const QUESTS = [
      UNIT 05 — THE FIRST WORLD WAR
   ══════════════════════════════════════════ */
   {
-    id: 'q_ww1',
+    id: 'q_ww1', tags: ['History', 'Grade 7'],
     emoji: '⚔️',
     title: 'The Great War Chronicles',
     subtitle: 'Unit 05 — The First World War: Causes, Events & Consequences',
@@ -1593,7 +1691,7 @@ const QUESTS = [
      UNIT 06 — THE ROLE OF THE OTTOMAN EMPIRE
   ══════════════════════════════════════════ */
   {
-    id: 'q_ottoman',
+    id: 'q_ottoman', tags: ['History', 'Grade 7'],
     emoji: '🌙',
     title: 'Fall of the Crescent Throne',
     subtitle: 'Unit 06 — The Ottoman Empire, WWI, and the Birth of Modern Türkiye',
@@ -1647,7 +1745,7 @@ const QUESTS = [
      UNIT 07 — THE SECOND WORLD WAR
   ══════════════════════════════════════════ */
   {
-    id: 'q_ww2',
+    id: 'q_ww2', tags: ['History', 'Grade 7'],
     emoji: '💣',
     title: 'The Second World Ablaze',
     subtitle: 'Unit 07 — World War II, the Atomic Age & the New World Order',
@@ -2020,12 +2118,17 @@ function checkDailyStreak() {
   const today = todayStr();
   const last  = UDATA.lastActivityDate;
   if (!last) return;
-  const diffDays = Math.floor((new Date(today) - new Date(last)) / 86_400_000);
+  // Firestore may store as Timestamp object — normalise to string
+  const lastStr = (last && last.toDate) ? last.toDate().toISOString().split('T')[0] : String(last).split('T')[0];
+  if (lastStr === today) return; // studied today, all good
+  const diffMs   = new Date(today) - new Date(lastStr);
+  const diffDays = Math.floor(diffMs / 86400000);
   if (diffDays > 1) {
-    // More than 1 day gap — streak broken
+    // Gap of 2+ days — streak broken
     UDATA.streak = 0;
     saveUserData({ streak: 0 });
   }
+  // diffDays === 1 means studied yesterday, streak intact — do nothing here
 }
 
 // js/ui.js
@@ -2044,6 +2147,7 @@ function showApp() {
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app-shell').style.display   = 'flex';
   updateHeaderStats();
+  updateHeaderAvatar();
   showPage('home');
 }
 
@@ -2189,20 +2293,25 @@ function renderHome() {
     s === 1 ? '✨ You studied today — your streak has begun!' :
               '⚔️ Begin a quest today to start your daily streak.';
 
-  // Classify each quest
+  // Render filter pills
+  renderFilterPills();
+
+  // Classify quests
   const active    = [];
   const available = [];
   const done      = [];
 
-  QUESTS.forEach(q => {
+  const filtered = filterQuests(QUESTS);
+
+  filtered.forEach(q => {
     const completed = q.nodes.filter(n => UDATA.completedNodes[n.id]).length;
     const total     = q.nodes.length;
     const pct       = Math.round((completed / total) * 100);
     const entry     = { q, completed, total, pct };
 
-    if (completed === 0)     available.push(entry);
+    if (completed === 0)          available.push(entry);
     else if (completed === total) done.push(entry);
-    else                     active.push(entry);
+    else                          active.push(entry);
   });
 
   // Render each section
@@ -2211,8 +2320,11 @@ function renderHome() {
   renderQuestGrid('grid-done',      done,      'completed');
 
   // Show/hide section headers
-  document.getElementById('sh-active').style.display = active.length ? '' : 'none';
-  document.getElementById('sh-done').style.display   = done.length   ? '' : 'none';
+  document.getElementById('sh-active').style.display    = active.length    ? '' : 'none';
+  document.getElementById('sh-done').style.display      = done.length      ? '' : 'none';
+  document.getElementById('sh-available').style.display = available.length ? '' : 'none';
+  const total = active.length + available.length + done.length;
+  document.getElementById('no-results').style.display   = total === 0      ? '' : 'none';
 }
 
 function renderQuestGrid(gridId, items, status) {
@@ -2240,6 +2352,7 @@ function renderQuestGrid(gridId, items, status) {
       `;
     }
 
+    const tagsHtml = (q.tags || []).map(t => `<span class="tag-pill">${t}</span>`).join('');
     card.innerHTML = `
       <div class="qc-top">
         <span class="qc-emoji">${q.emoji}</span>
@@ -2247,6 +2360,7 @@ function renderQuestGrid(gridId, items, status) {
       </div>
       <div class="qc-title">${q.title}</div>
       <div class="qc-sub">${q.subtitle}</div>
+      ${tagsHtml ? `<div class="quest-tags">${tagsHtml}</div>` : ''}
       <div class="qc-meta">
         <span>📖 ${total} nodes</span>
         <span>⭐ ${q.xpTotal} XP</span>
@@ -2269,13 +2383,13 @@ function renderQuestGrid(gridId, items, status) {
 function restartQuest(questId) {
   const q = QUESTS.find(x => x.id === questId);
   if (!q) return;
-  if (!confirm(`Restart "${q.title}"?\n\nYour node progress for this quest will be reset.`)) return;
-
-  const cn = { ...(UDATA.completedNodes || {}) };
-  q.nodes.forEach(n => delete cn[n.id]);
-  saveUserData({ completedNodes: cn });
-  renderHome();
-  showToast('↺ Quest reset — your path has been cleared.');
+  showConfirm(`Restart "${q.title}"?`, 'Your node progress for this quest will be reset.', 'Restart', () => {
+    const cn = { ...(UDATA.completedNodes || {}) };
+    q.nodes.forEach(n => delete cn[n.id]);
+    saveUserData({ completedNodes: cn });
+    renderHome();
+    showToast('↺ Quest reset — your path has been cleared.');
+  });
 }
 
 // js/path.js
@@ -2687,9 +2801,7 @@ function nextQ() {
 }
 
 function confirmExitQuiz() {
-  if (confirm('Retreat from battle?\n\nProgress on this node will not be saved.')) {
-    exitToPath();
-  }
+  showConfirm('Retreat from Battle?', 'Progress on this node will not be saved.', 'Retreat', () => exitToPath());
 }
 
 function exitToPath() {
@@ -2707,10 +2819,12 @@ async function finishQuiz() {
   const total   = questions.length;
   const pct     = total > 0 ? score / total : 0;
   const perfect = hearts === 3;
+  // isFirstAttempt: XP + achievements only awarded if node wasn't already completed
+  const isFirstAttempt = !UDATA.completedNodes[node.id];
 
-  // XP earned: base × accuracy, +20% bonus for perfect
-  let earned = Math.round(node.xp * pct);
-  if (perfect && pct > 0) earned = Math.round(earned * 1.2);
+  // XP earned: base × accuracy, +20% bonus for perfect — only on first pass
+  let earned = isFirstAttempt ? Math.round(node.xp * pct) : 0;
+  if (isFirstAttempt && perfect && pct > 0) earned = Math.round(earned * 1.2);
 
   // ── Result UI ──
   document.getElementById('ri').textContent = pct >= 0.8 ? '🏆' : pct >= 0.5 ? '⚔️' : '💀';
@@ -2725,7 +2839,7 @@ async function finishQuiz() {
     : 'Every defeat is wisdom. Rise again, scholar.';
 
   document.getElementById('res-score').textContent = `${score}/${total}`;
-  document.getElementById('res-xp').textContent    = `+${earned}`;
+  document.getElementById('res-xp').textContent    = isFirstAttempt ? `+${earned}` : '+0 (replay)';
   document.getElementById('retry-btn').onclick     = () => startQuiz(node);
 
   // ── Build Firestore delta ──
@@ -2738,7 +2852,7 @@ async function finishQuiz() {
     cn[node.id] = true;
     delta.completedNodes = cn;
 
-    if (isNew) {
+    if (isNew && isFirstAttempt) {
       delta.totalNodes = (UDATA.totalNodes || 0) + 1;
       if (node.type === 'boss') delta.bossesDefeated = (UDATA.bossesDefeated || 0) + 1;
       if (perfect)              delta.perfectNodes   = (UDATA.perfectNodes   || 0) + 1;
@@ -2751,13 +2865,16 @@ async function finishQuiz() {
       }
     }
 
-    // Streak — only increment once per calendar day
+    // Streak — increment once per calendar day if passed (pct >= 0.6)
     const today = todayStr();
-    if (UDATA.lastActivityDate !== today) {
+    const lastStr = UDATA.lastActivityDate && UDATA.lastActivityDate.toDate
+      ? UDATA.lastActivityDate.toDate().toISOString().split('T')[0]
+      : String(UDATA.lastActivityDate || '').split('T')[0];
+    if (lastStr !== today) {
       const newStreak = (UDATA.streak || 0) + 1;
-      delta.streak            = newStreak;
-      delta.bestStreak        = Math.max(UDATA.bestStreak || 0, newStreak);
-      delta.lastActivityDate  = today;
+      delta.streak           = newStreak;
+      delta.bestStreak       = Math.max(UDATA.bestStreak || 0, newStreak);
+      delta.lastActivityDate = today;
     }
   }
 
@@ -2786,6 +2903,177 @@ async function finishQuiz() {
   }
 
   showPage('result');
+}
+
+
+// ══════════════════════════════════════════════════════════
+//  IN-APP CONFIRM DIALOG (replaces browser confirm())
+// ══════════════════════════════════════════════════════════
+let _confirmCallback = null;
+
+function showConfirm(title, body, confirmText, onConfirm) {
+  document.getElementById('confirm-title').textContent   = title;
+  document.getElementById('confirm-body').textContent    = body;
+  document.getElementById('confirm-ok-btn').textContent  = confirmText || 'Confirm';
+  _confirmCallback = onConfirm;
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+
+function confirmResolve(yes) {
+  document.getElementById('confirm-overlay').classList.remove('open');
+  if (yes && _confirmCallback) _confirmCallback();
+  _confirmCallback = null;
+}
+
+// ══════════════════════════════════════════════════════════
+//  NEXT NODE LOGIC
+// ══════════════════════════════════════════════════════════
+function goNextNode() {
+  const questId = window._currentQuestId;
+  if (!questId) { exitToPath(); return; }
+  const q = QUESTS.find(x => x.id === questId);
+  if (!q) { exitToPath(); return; }
+
+  // Find the next unlocked-but-not-done node
+  const nextNode = q.nodes.find(n => {
+    const done   = !!UDATA.completedNodes[n.id];
+    const idx    = q.nodes.indexOf(n);
+    const prevOk = idx === 0 || !!UDATA.completedNodes[q.nodes[idx - 1].id];
+    return !done && prevOk;
+  });
+
+  if (nextNode) {
+    openNodeModal(nextNode);
+  } else {
+    // All nodes done — go back to path
+    exitToPath();
+    showToast('🏆 All nodes conquered! Quest complete!');
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  SEARCH & FILTER
+// ══════════════════════════════════════════════════════════
+let _activeFilters = new Set();
+
+function getAllTags() {
+  const tags = new Set();
+  QUESTS.forEach(q => (q.tags || []).forEach(t => tags.add(t)));
+  return [...tags].sort();
+}
+
+function renderFilterPills() {
+  const container = document.getElementById('filter-pills');
+  if (!container) return;
+  container.innerHTML = '';
+  getAllTags().forEach(tag => {
+    const pill = document.createElement('div');
+    pill.className = 'filter-pill' + (_activeFilters.has(tag) ? ' active' : '');
+    pill.textContent = tag;
+    pill.onclick = () => {
+      if (_activeFilters.has(tag)) _activeFilters.delete(tag);
+      else _activeFilters.add(tag);
+      renderHome();
+    };
+    container.appendChild(pill);
+  });
+}
+
+function filterQuests(quests) {
+  const searchEl = document.getElementById('quest-search');
+  const query = searchEl ? searchEl.value.trim().toLowerCase() : '';
+  return quests.filter(q => {
+    const tags = (q.tags || []).map(t => t.toLowerCase());
+    const matchesSearch = !query
+      || q.title.toLowerCase().includes(query)
+      || q.subtitle.toLowerCase().includes(query)
+      || tags.some(t => t.includes(query));
+    const matchesFilter = _activeFilters.size === 0
+      || [..._activeFilters].every(f => (q.tags || []).includes(f));
+    return matchesSearch && matchesFilter;
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+//  PROFILE MODAL
+// ══════════════════════════════════════════════════════════
+let _pendingAvatarDataURL = null;
+
+function openProfileModal() {
+  const name = USER?.displayName || '';
+  document.getElementById('profile-name-input').value = name;
+  document.getElementById('profile-err').textContent  = '';
+  _pendingAvatarDataURL = null;
+  // Show current avatar
+  renderAvatarPreview();
+  document.getElementById('profile-modal-overlay').classList.add('open');
+}
+
+function closeProfileModal() {
+  document.getElementById('profile-modal-overlay').classList.remove('open');
+  _pendingAvatarDataURL = null;
+}
+
+function renderAvatarPreview() {
+  const wrap = document.getElementById('avatar-preview-wrap');
+  if (!wrap) return;
+  const avatarUrl = _pendingAvatarDataURL || UDATA.avatarUrl || null;
+  if (avatarUrl) {
+    wrap.innerHTML = `<img src="${avatarUrl}" alt="avatar"><div class="change-hint">Change</div>`;
+  } else {
+    wrap.innerHTML = `<span id="avatar-preview-emoji">👤</span><div class="change-hint">Change</div>`;
+  }
+}
+
+function handleAvatarUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    _pendingAvatarDataURL = e.target.result;
+    renderAvatarPreview();
+  };
+  reader.readAsDataURL(file);
+}
+
+async function saveProfile() {
+  const { updateProfile } = window._fb;
+  const name = document.getElementById('profile-name-input').value.trim();
+  const err  = document.getElementById('profile-err');
+  if (!name) { err.textContent = 'Name cannot be empty.'; return; }
+
+  err.textContent = 'Saving...';
+  try {
+    await updateProfile(USER, { displayName: name });
+
+    // Store avatar as base64 in Firestore (small images only — good for now)
+    const updates = {};
+    if (_pendingAvatarDataURL) {
+      updates.avatarUrl = _pendingAvatarDataURL;
+      UDATA.avatarUrl   = _pendingAvatarDataURL;
+    }
+    if (Object.keys(updates).length) await saveUserData(updates);
+
+    closeProfileModal();
+    updateHeaderAvatar();
+    renderHome(); // refresh greeting
+    showToast('✓ Profile updated!');
+  } catch(e) {
+    err.textContent = 'Failed to save. Try again.';
+    console.error(e);
+  }
+}
+
+function updateHeaderAvatar() {
+  const btn     = document.getElementById('avatar-btn');
+  const avatarUrl = UDATA.avatarUrl || null;
+  if (btn) {
+    if (avatarUrl) {
+      btn.innerHTML = `<img class="avatar-hdr-img" src="${avatarUrl}" alt="avatar">`;
+    } else {
+      btn.textContent = '👤';
+    }
+  }
 }
 
 </script>
